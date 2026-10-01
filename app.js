@@ -5,6 +5,7 @@
   const ctx = canvas.getContext("2d");
   const appShell = document.querySelector(".app-shell");
   const wrap = document.querySelector(".board-wrap");
+  const toolbox = document.querySelector(".toolbox");
   const hint = document.querySelector("#boardHint");
   const status = document.querySelector("#status");
   const textInput = document.querySelector("#textInput");
@@ -39,8 +40,14 @@
   let saveTimer;
   let statusTimer;
   let compactPreference = null;
+  let compactTop = null;
+  let compactDrag = null;
+  let ignoreCompactClick = false;
   let spaceHeld = false;
   let eraserPreview = null;
+  const activePointers = new Map();
+  let pinch = null;
+  let suppressUntilPointersClear = false;
   const narrowScreen = window.matchMedia("(max-width: 720px), (max-height: 560px)");
   const coarsePointer = window.matchMedia("(pointer: coarse)");
 
@@ -396,6 +403,51 @@
     render(); persistSoon();
   }
 
+  function pointerScreenPosition(event) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  }
+
+  function pinchGeometry() {
+    const points = [...activePointers.values()];
+    if (points.length < 2) return null;
+    const [first, second] = points;
+    return {
+      distance: Math.hypot(second.x - first.x, second.y - first.y),
+      center: { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 }
+    };
+  }
+
+  function beginPinch() {
+    const geometry = pinchGeometry();
+    if (!geometry || geometry.distance < 1) return;
+    if (inlineEditor.style.display === "block") finishInlineEdit(true);
+    if (Array.isArray(interaction?.before)) objects = clone(interaction.before);
+    interaction = null;
+    eraserPreview = null;
+    delete wrap.dataset.panning;
+    pinch = {
+      distance: geometry.distance,
+      zoom: camera.zoom,
+      worldX: (geometry.center.x - camera.x) / camera.zoom,
+      worldY: (geometry.center.y - camera.y) / camera.zoom
+    };
+    suppressUntilPointersClear = true;
+    render();
+  }
+
+  function updatePinch() {
+    if (!pinch) return;
+    const geometry = pinchGeometry();
+    if (!geometry) return;
+    const next = Math.max(.5, Math.min(3, pinch.zoom * geometry.distance / pinch.distance));
+    camera.zoom = next;
+    camera.x = geometry.center.x - pinch.worldX * next;
+    camera.y = geometry.center.y - pinch.worldY * next;
+    zoomReset.textContent = `${Math.round(next * 100)}%`;
+    render();
+  }
+
   canvas.addEventListener("wheel", event => {
     if (!event.shiftKey) return;
     event.preventDefault();
@@ -459,8 +511,18 @@
   function applyCompactMode(compact, announce = false) {
     appShell.classList.toggle("compact-ui", compact);
     compactMode.setAttribute("aria-pressed", String(compact));
-    compactMode.title = compact ? "Expandir painel (Ctrl+\\)" : "Ativar modo discreto (Ctrl+\\)";
+    compactMode.title = compact ? "Toque para expandir ou segure e arraste para mover" : "Ativar modo discreto (Ctrl+\\)";
+    requestAnimationFrame(positionCompactToolbox);
     if (announce) showStatus(compact ? "Modo discreto ativado" : "Painel expandido");
+  }
+
+  function positionCompactToolbox(nextTop = compactTop) {
+    if (!appShell.classList.contains("compact-ui") || !narrowScreen.matches) return;
+    const safeEdge = 8;
+    const panelHeight = Math.min(toolbox.scrollHeight, window.innerHeight * .78);
+    const maximum = Math.max(safeEdge, window.innerHeight - panelHeight - safeEdge);
+    compactTop = Math.max(safeEdge, Math.min(maximum, Number.isFinite(nextTop) ? nextTop : safeEdge));
+    toolbox.style.setProperty("--compact-top", `${compactTop}px`);
   }
 
   function toggleCompactMode() {
@@ -535,7 +597,40 @@
     showStatus("Resultado adicionado à lousa");
   });
 
-  compactMode.addEventListener("click", toggleCompactMode);
+  compactMode.addEventListener("pointerdown", event => {
+    if (!appShell.classList.contains("compact-ui") || !narrowScreen.matches || event.button !== 0) return;
+    compactDrag = { pointerId: event.pointerId, startY: event.clientY, startTop: toolbox.getBoundingClientRect().top, moved: false };
+    compactMode.setPointerCapture(event.pointerId);
+  });
+  compactMode.addEventListener("pointermove", event => {
+    if (!compactDrag || compactDrag.pointerId !== event.pointerId) return;
+    const delta = event.clientY - compactDrag.startY;
+    if (Math.abs(delta) > 5) compactDrag.moved = true;
+    if (compactDrag.moved) {
+      event.preventDefault();
+      positionCompactToolbox(compactDrag.startTop + delta);
+      toolbox.classList.add("dragging");
+    }
+  });
+  function endCompactDrag(event) {
+    if (!compactDrag || compactDrag.pointerId !== event.pointerId) return;
+    if (compactDrag.moved) {
+      ignoreCompactClick = event.type === "pointerup";
+      persistSoon();
+    }
+    toolbox.classList.remove("dragging");
+    compactDrag = null;
+  }
+  compactMode.addEventListener("pointerup", endCompactDrag);
+  compactMode.addEventListener("pointercancel", endCompactDrag);
+  compactMode.addEventListener("click", event => {
+    if (ignoreCompactClick) {
+      event.preventDefault();
+      ignoreCompactClick = false;
+      return;
+    }
+    toggleCompactMode();
+  });
   narrowScreen.addEventListener("change", event => {
     if (compactPreference === null) applyCompactMode(event.matches);
   });
@@ -547,6 +642,13 @@
 
   canvas.addEventListener("pointerdown", event => {
     event.preventDefault();
+    activePointers.set(event.pointerId, pointerScreenPosition(event));
+    canvas.setPointerCapture(event.pointerId);
+    if (activePointers.size === 2) {
+      beginPinch();
+      return;
+    }
+    if (suppressUntilPointersClear) return;
     if (inlineEditor.style.display === "block") finishInlineEdit();
     const point = pointFromEvent(event);
     if (tool === "real-erase") eraserPreview = point;
@@ -641,6 +743,12 @@
   });
 
   canvas.addEventListener("pointermove", event => {
+    if (activePointers.has(event.pointerId)) activePointers.set(event.pointerId, pointerScreenPosition(event));
+    if (pinch) {
+      updatePinch();
+      return;
+    }
+    if (suppressUntilPointersClear) return;
     if (interaction?.type === "pan") {
       camera.x += event.clientX - interaction.last.x;
       camera.y += event.clientY - interaction.last.y;
@@ -684,7 +792,17 @@
     render();
   });
 
-  function endInteraction() {
+  function endInteraction(event) {
+    if (event) activePointers.delete(event.pointerId);
+    if (suppressUntilPointersClear) {
+      if (activePointers.size < 2) pinch = null;
+      if (activePointers.size === 0) {
+        suppressUntilPointersClear = false;
+        persistSoon();
+        showStatus(`Zoom ${Math.round(camera.zoom * 100)}%`);
+      }
+      return;
+    }
     if (!interaction) return;
     if (interaction.type === "marquee") {
       const marquee = interaction;
@@ -871,7 +989,7 @@
   function persistSoon() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ objects, grid: showGrid.checked, compact: compactPreference, camera, eraserSize: Number(eraserSize.value) }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ objects, grid: showGrid.checked, compact: compactPreference, compactTop, camera, eraserSize: Number(eraserSize.value) }));
       showStatus("Salvo automaticamente");
     }, 220);
   }
@@ -887,6 +1005,7 @@
       if (Array.isArray(saved?.objects)) objects = saved.objects;
       showGrid.checked = Boolean(saved?.grid);
       if (typeof saved?.compact === "boolean") compactPreference = saved.compact;
+      if (Number.isFinite(saved?.compactTop)) compactTop = saved.compactTop;
       if (Number.isFinite(saved?.eraserSize)) setEraserSize(saved.eraserSize);
       if (saved?.camera && Number.isFinite(saved.camera.x) && Number.isFinite(saved.camera.y) && Number.isFinite(saved.camera.zoom)) {
         camera.x = saved.camera.x;
@@ -901,7 +1020,7 @@
   applyCompactMode(compactPreference ?? narrowScreen.matches);
   setTool("select");
   new ResizeObserver(resize).observe(wrap);
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", () => { resize(); positionCompactToolbox(); });
 
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));

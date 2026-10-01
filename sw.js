@@ -1,4 +1,4 @@
-const CACHE_NAME = "lousa-matematica-v11";
+const CACHE_NAME = "lousa-matematica-v12";
 const APP_FILES = [
   "./",
   "./index.html",

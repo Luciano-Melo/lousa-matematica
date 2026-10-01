@@ -26,8 +26,8 @@ Abra `index.html` no navegador. No VS Code, você também pode usar **Open with 
 - **Fração (F):** adiciona uma barra de fração.
 - `Delete`: remove o item selecionado.
 - `Ctrl+Z` / `Ctrl+Y`: desfazer / refazer.
-- `Shift + scroll`: aumentar ou diminuir o zoom. Clique na porcentagem no canto da lousa para voltar a 100%.
-- **Modo discreto:** reduz o painel a uma faixa de ícones. Use o botão **Discreto** ou `Ctrl+\` para alternar.
+- `Shift + scroll` no computador ou pinça com dois dedos no celular: aumentar ou diminuir o zoom. Clique na porcentagem no canto da lousa para voltar a 100%.
+- **Modo discreto:** reduz o painel a uma faixa de ícones. Use o botão **Discreto** ou `Ctrl+\` para alternar. No celular, segure o primeiro botão e arraste para posicionar a faixa para cima ou para baixo.
 
 O conteúdo fica salvo automaticamente no armazenamento local do navegador. O botão **PNG** exporta a lousa como imagem.
 

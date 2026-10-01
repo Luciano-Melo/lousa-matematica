@@ -163,13 +163,27 @@ output { color: #cdd1d5; font-variant-numeric: tabular-nums; text-align: right; 
 .compact-ui .actions #download,
 .compact-ui .actions #clear { display: none; }
 
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-height: 560px) {
   .app-shell { grid-template-columns: minmax(0, 1fr) 0; }
   .app-shell.compact-ui { grid-template-columns: minmax(0, 1fr) 56px; }
   .board-wrap { margin: 6px 0 6px 6px; border-radius: 9px 0 0 9px; }
   .toolbox { position: fixed; z-index: 10; inset: 0 0 0 auto; width: min(82vw, 280px); padding-top: max(10px, env(safe-area-inset-top)); padding-right: max(10px, env(safe-area-inset-right)); padding-bottom: max(10px, env(safe-area-inset-bottom)); box-shadow: -12px 0 35px rgba(0, 0, 0, .5); }
   .compact-ui .toolbox { position: static; width: auto; box-shadow: none; }
   .calculator, .compact-ui .calculator { top: max(12px, env(safe-area-inset-top)); right: max(70px, env(safe-area-inset-right)); width: min(300px, calc(100vw - 84px)); }
+}
+
+@media (max-width: 720px), (max-height: 560px) {
+  .compact-ui .toolbox {
+    position: fixed;
+    inset: var(--compact-top, 8px) max(0px, env(safe-area-inset-right)) auto auto;
+    width: 62px;
+    max-height: 78dvh;
+    border: 1px solid #30353a;
+    border-radius: 12px 0 0 12px;
+    box-shadow: -8px 8px 28px rgba(0, 0, 0, .42);
+  }
+  .compact-ui .compact-toggle { cursor: grab; touch-action: none; }
+  .compact-ui .toolbox.dragging .compact-toggle { cursor: grabbing; }
 }
 
 @media (pointer: coarse) {
