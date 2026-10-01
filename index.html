@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#111316" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Lousa" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Lousa de bolso</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="board-wrap" aria-label="Lousa matemática">
+        <canvas id="board"></canvas>
+        <input id="inlineEditor" class="inline-editor" aria-label="Editar texto" placeholder="Digite e pressione Enter" autocomplete="off" />
+        <div class="board-hint" id="boardHint">Desenhe ou adicione uma expressão ao lado →</div>
+        <div class="status" id="status" aria-live="polite">Salvo automaticamente</div>
+        <button id="zoomReset" class="zoom-reset" title="Shift + scroll para zoom · Clique para centralizar e voltar a 100%">100%</button>
+      </section>
+
+      <aside class="toolbox" aria-label="Ferramentas">
+        <header class="brand-row">
+          <div class="brand">
+            <div class="brand-mark">∑</div>
+            <div class="brand-copy">
+              <h1>Lousa</h1>
+              <p>matemática de bolso</p>
+            </div>
+          </div>
+          <button id="compactMode" class="compact-toggle" title="Ativar modo discreto (Ctrl+\)" aria-pressed="false"><span>◧</span><span class="compact-label">Discreto</span></button>
+        </header>
+
+        <section class="panel">
+          <h2>Ferramentas</h2>
+          <div class="tool-grid">
+            <button class="tool active wide" data-tool="select" title="Mover itens ou arrastar o fundo da lousa (V)"><span>↖</span><span class="tool-label">Mover</span></button>
+            <button class="tool" data-tool="multi-select" title="Arrastar uma área para selecionar itens (S)"><span>⬚</span><span class="tool-label">Seleção</span></button>
+            <button id="selectAll" class="tool" data-action="select-all" title="Selecionar todos (Ctrl+A)"><span>▣</span><span class="tool-label">Todos</span></button>
+            <button class="tool" data-tool="draw" title="Lápis (P)"><span>✎</span><span class="tool-label">Lápis</span></button>
+            <button class="tool" data-tool="erase" title="Borracha (E)"><span>▱</span><span class="tool-label">Borracha</span></button>
+            <button class="tool wide" data-tool="real-erase" title="Apagar livremente como um apagador (A)"><span>▰</span><span class="tool-label">Apagador</span></button>
+            <div id="eraserQuickControl" class="eraser-quick" aria-label="Tamanho do apagador">
+              <button id="eraserSmaller" title="Diminuir apagador">−</button>
+              <input id="eraserSizeQuick" type="range" min="6" max="140" value="32" aria-label="Tamanho do apagador" />
+              <button id="eraserLarger" title="Aumentar apagador">＋</button>
+              <output id="eraserSizeQuickValue">32</output>
+            </div>
+            <button class="tool" data-tool="text" title="Inserir texto (T)"><span>T</span><span class="tool-label">Texto</span></button>
+            <button class="tool" data-tool="edit-text" title="Editar texto existente (R)"><span>T✎</span><span class="tool-label">Editar texto</span></button>
+            <button class="tool wide" data-tool="duplicate" title="Duplicar texto ou desenho (D)"><span>⧉</span><span class="tool-label">Duplicar</span></button>
+            <button class="tool wide" data-tool="fraction" title="Criar barra de fração (F)"><span>―</span><span class="tool-label">Fração</span></button>
+            <button id="calculatorToggle" class="tool wide" data-action="calculator" title="Abrir calculadora (C)"><span>▦</span><span class="tool-label">Calc</span></button>
+          </div>
+        </section>
+
+        <section class="panel advanced-panel">
+          <h2>Digitar</h2>
+          <label class="input-label" for="textInput">Número, letra ou expressão</label>
+          <div class="add-row">
+            <input id="textInput" type="text" placeholder="Ex.: x² + 4" autocomplete="off" />
+            <button id="addText" class="primary" title="Adicionar à lousa">＋</button>
+          </div>
+          <div class="control-row">
+            <label for="fontSize">Tamanho</label>
+            <input id="fontSize" type="range" min="10" max="180" value="32" />
+            <output id="fontSizeValue">32</output>
+          </div>
+          <label class="check-row"><input id="superscript" type="checkbox" /> Expoente</label>
+        </section>
+
+        <section class="panel advanced-panel">
+          <h2>Símbolos rápidos</h2>
+          <div class="symbol-grid" id="symbolGrid">
+            <button data-symbol="+">＋</button><button data-symbol="−">−</button>
+            <button data-symbol="×">×</button><button data-symbol="÷">÷</button>
+            <button data-symbol="=">=</button><button data-symbol="≠">≠</button>
+            <button data-symbol="(">(</button><button data-symbol=")">)</button>
+            <button data-symbol="√">√</button><button data-symbol="π">π</button>
+            <button data-symbol="≤">≤</button><button data-symbol="≥">≥</button>
+          </div>
+        </section>
+
+        <section class="panel compact advanced-panel">
+          <h2>Aparência</h2>
+          <div class="control-row">
+            <label for="strokeWidth">Traço</label>
+            <input id="strokeWidth" type="range" min="1" max="10" value="3" />
+            <output id="strokeWidthValue">3</output>
+          </div>
+          <div class="control-row">
+            <label for="eraserSize">Apagador</label>
+            <input id="eraserSize" type="range" min="6" max="140" value="32" />
+            <output id="eraserSizeValue">32</output>
+          </div>
+          <label class="check-row"><input id="showGrid" type="checkbox" /> Grade pontilhada</label>
+        </section>
+
+        <footer class="actions">
+          <button id="undo" title="Desfazer (Ctrl+Z)">↶</button>
+          <button id="redo" title="Refazer (Ctrl+Y)">↷</button>
+          <button id="download" title="Baixar como PNG">⇩ PNG</button>
+          <button id="clear" class="danger" title="Limpar lousa">Limpar</button>
+        </footer>
+      </aside>
+
+      <section id="calculator" class="calculator" role="dialog" aria-labelledby="calculatorTitle" aria-hidden="true" hidden>
+        <header class="calculator-header">
+          <div><span>▦</span> <strong id="calculatorTitle">Calculadora</strong></div>
+          <button id="calculatorClose" title="Fechar calculadora" aria-label="Fechar calculadora">×</button>
+        </header>
+        <input id="calculatorDisplay" class="calculator-display" type="text" inputmode="decimal" enterkeyhint="done" aria-label="Expressão da calculadora" placeholder="0" autocomplete="off" />
+        <div class="calculator-grid" id="calculatorGrid">
+          <button data-calc-action="clear" class="calc-muted">C</button>
+          <button data-calc-value="(">(</button>
+          <button data-calc-value=")">)</button>
+          <button data-calc-action="backspace" class="calc-muted">⌫</button>
+          <button data-calc-value="7">7</button><button data-calc-value="8">8</button><button data-calc-value="9">9</button><button data-calc-value="÷" class="calc-operator">÷</button>
+          <button data-calc-value="4">4</button><button data-calc-value="5">5</button><button data-calc-value="6">6</button><button data-calc-value="×" class="calc-operator">×</button>
+          <button data-calc-value="1">1</button><button data-calc-value="2">2</button><button data-calc-value="3">3</button><button data-calc-value="−" class="calc-operator">−</button>
+          <button data-calc-value="0">0</button><button data-calc-value=".">.</button><button data-calc-action="equals" class="calc-equals">=</button><button data-calc-value="+" class="calc-operator">+</button>
+        </div>
+        <button id="calculatorUse" class="calculator-use">＋ Usar resultado na lousa</button>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

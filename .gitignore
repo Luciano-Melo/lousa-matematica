@@ -1,0 +1,7 @@
+node_modules/
+test-results/
+playwright-report/
+*.log
+*-debug.js
+*-check-state.json
+*-preview.png
