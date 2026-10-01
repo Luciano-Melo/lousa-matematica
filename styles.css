@@ -72,9 +72,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .zoom-reset:hover { color: #eef0f1; }
 
 .inline-editor {
-  display: none; position: absolute; z-index: 3; width: 210px; max-width: calc(100% - 20px); min-width: 0; height: auto; padding: 4px 7px;
-  color: var(--ink); background: #141719; border: 2px solid #9fca62; border-radius: 4px;
+  display: none; position: absolute; z-index: 3; width: 32px; max-width: calc(100% - 16px); min-width: 0; height: 32px; padding: 2px 5px;
+  color: var(--ink); caret-color: var(--ink); background: rgba(8, 10, 12, .78); border: 1px dashed #9fca62; border-radius: 4px;
+  font-family: Georgia, "Times New Roman", serif; line-height: 1; outline: none;
 }
+.inline-editor:focus, .inline-editor:focus-visible { outline: none; border-color: #b7e279; }
 
 .toolbox {
   display: flex; flex-direction: column; gap: 8px; padding: 12px; min-height: 0; overflow-y: auto;

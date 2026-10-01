@@ -855,15 +855,34 @@
     inlineEditor.dataset.id = obj?.id || "";
     inlineEditor.dataset.x = x;
     inlineEditor.dataset.y = y;
+    inlineEditor.dataset.italic = String(Boolean(obj?.italic || (!obj && superscript.checked)));
     inlineEditor.value = obj?.text || "";
     const screenX = x * camera.zoom + camera.x;
     const screenY = y * camera.zoom + camera.y;
-    inlineEditor.style.left = `${Math.max(8, Math.min(screenX, canvas.clientWidth - 220))}px`;
-    inlineEditor.style.top = `${Math.max(8, Math.min(screenY, canvas.clientHeight - 54))}px`;
     inlineEditor.style.fontSize = `${Math.max(16, (obj?.size || currentFontSize()) * camera.zoom)}px`;
+    inlineEditor.style.left = `${Math.max(8, Math.min(screenX, canvas.clientWidth - 40))}px`;
+    inlineEditor.style.top = `${Math.max(8, Math.min(screenY, canvas.clientHeight - 40))}px`;
     inlineEditor.style.display = "block";
+    resizeInlineEditor();
     inlineEditor.focus();
     if (obj) inlineEditor.select();
+  }
+
+  function resizeInlineEditor() {
+    const fontPixels = Number.parseFloat(inlineEditor.style.fontSize) || 16;
+    const boxHeight = Math.max(28, Math.ceil(fontPixels * 1.15 + 7));
+    ctx.save();
+    ctx.font = `${inlineEditor.dataset.italic === "true" ? "italic " : ""}${fontPixels}px Georgia, 'Times New Roman', serif`;
+    const textWidth = ctx.measureText(inlineEditor.value).width;
+    ctx.restore();
+    const requestedLeft = Number.parseFloat(inlineEditor.style.left) || 8;
+    const left = Math.max(8, Math.min(requestedLeft, canvas.clientWidth - boxHeight - 8));
+    inlineEditor.style.left = `${left}px`;
+    const maximumWidth = Math.max(boxHeight, canvas.clientWidth - left - 8);
+    inlineEditor.style.height = `${boxHeight}px`;
+    inlineEditor.style.width = `${Math.min(maximumWidth, Math.max(boxHeight, Math.ceil(textWidth + 12)))}px`;
+    const top = Number.parseFloat(inlineEditor.style.top) || 8;
+    inlineEditor.style.top = `${Math.max(8, Math.min(top, canvas.clientHeight - boxHeight - 8))}px`;
   }
 
   function finishInlineEdit(cancel = false) {
@@ -881,6 +900,7 @@
     if (event.key === "Enter") { event.preventDefault(); finishInlineEdit(); }
     if (event.key === "Escape") finishInlineEdit(true);
   });
+  inlineEditor.addEventListener("input", resizeInlineEditor);
   inlineEditor.addEventListener("blur", () => finishInlineEdit());
 
   document.querySelectorAll(".tool").forEach(button => button.addEventListener("click", () => {
